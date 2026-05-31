@@ -11,79 +11,6 @@ st.set_page_config(
     page_icon="☕"
 )
 
-# --- INJECTION CSS POUR LE DESIGN PROFESSIONNEL & ATTRAYANT ---
-st.markdown("""
-    <style>
-        @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap');
-        
-        html, body, [data-testid="stSidebarView"] *, .main * {
-            font-family: 'Plus Jakarta Sans', sans-serif !important;
-        }
-        
-        .header-container {
-            background: linear-gradient(135deg, #4A2E2B 0%, #2E1A18 100%);
-            padding: 40px;
-            border-radius: 16px;
-            color: #FFFFFF;
-            margin-bottom: 30px;
-            box-shadow: 0 10px 20px rgba(0,0,0,0.05);
-        }
-        
-        .main-title {
-            font-size: 44px;
-            font-weight: 700;
-            color: #FFFFFF;
-            margin-bottom: 10px;
-            letter-spacing: -0.5px;
-        }
-        
-        .section-subtitle {
-            font-size: 18px;
-            color: #D2C4C1;
-            font-weight: 300;
-            line-height: 1.4;
-        }
-        
-        .kpi-box {
-            background-color: #FDFBF7;
-            padding: 20px;
-            border-radius: 14px;
-            border: 1px solid #EFEBE4;
-            border-top: 4px solid #8B5A2B;
-            box-shadow: 0 4px 12px rgba(74,46,43,0.03);
-            text-align: center;
-        }
-        
-        .kpi-value {
-            font-size: 28px;
-            font-weight: 700;
-            color: #4A2E2B;
-            margin-bottom: 5px;
-        }
-        
-        .kpi-label {
-            font-size: 12px;
-            color: #8A7A78;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-            font-weight: 500;
-        }
-        
-        .news-box {
-            background-color: #F4EFEA;
-            padding: 25px;
-            border-radius: 14px;
-            border-left: 5px solid #4A2E2B;
-            margin-bottom: 25px;
-        }
-        
-        h3, h2, h1 {
-            color: #4A2E2B !important;
-            font-weight: 600 !important;
-        }
-    </style>
-""", unsafe_allowed_html=True)
-
 # ----------------------------
 # SOURCES DE DONNÉES
 # ----------------------------
@@ -100,31 +27,29 @@ def load_excel(url, sheet):
 # ----------------------------
 # NAVIGATION (Barre latérale)
 # ----------------------------
-st.sidebar.markdown("<h3 style='color: #4A2E2B; margin-bottom:20px;'>Options d'analyse</h3>", unsafe_allowed_html=True)
+st.sidebar.header("Navigation")
 section = st.sidebar.radio(
-    "Navigation principale",
+    "Choisir une section :",
     [
-        "Accueil & Actualités",
+        "Accueil",
         "Production et Prix",
-        "Données macroéconomiques (ARDL)"
+        "Données macroéconomiques"
     ]
 )
 
 # ----------------------------
-# EN-TÊTE FIXE DU SITE
+# TITRE PRINCIPAL ÉPURÉ
 # ----------------------------
-st.markdown("""
-    <div class='header-container'>
-        <div class='main-title'>Congo Coffee Data</div>
-        <div class='section-subtitle'>Observatoire analytique et macroéconomique de la filière café en République Démocratique du Congo</div>
-    </div>
-""", unsafe_allowed_html=True)
+st.title("☕ Congo Coffee Data")
+st.caption("Observatoire analytique et macroéconomique de la filière café en République Démocratique du Congo")
+st.markdown("---")
 
 # ----------------------------
 # SECTION 1 : ACCUEIL & ACTUALITÉS
 # ----------------------------
 if section == "Accueil & Actualités":
     
+    # Image principale de la plantation
     st.image(
         "https://images.unsplash.com/photo-1501339847302-ac426a4a7cbb?q=80&w=2078&auto=format&fit=crop", 
         caption="Séchage traditionnel et contrôle qualité des cerises de café",
@@ -133,35 +58,37 @@ if section == "Accueil & Actualités":
     
     st.markdown("<br>", unsafe_allowed_html=True)
     
-    # --- AJOUT N°1 : POINT CONJONCTURE & ACTUALITÉ 2025 ---
-    st.markdown("### 📰 Actualités et Conjoncture Récente")
+    # --- ACTUALITÉS & CONJONCTURE 2025 ---
+    st.subheader("📰 Actualités et Conjoncture Récente (Campagne 2025)")
     
-    st.markdown("""
-    <div class='news-box'>
-        <h4 style='color: #4A2E2B; margin-top:0;'>Point de situation - Campagne 2025</h4>
-        <p>La campagne caféière de l'année <b>2025</b> est marquée par une consolidation progressive des cours mondiaux combinée à des efforts structurels de relance agricole en RDC. Malgré les défis logistiques persistants à l'Est du pays, la production affiche une dynamique intéressante sous l'impulsion des coopératives locales.</p>
-    </div>
-    """, unsafe_allowed_html=True)
+    st.markdown(
+        """
+        La campagne caféière de l'année **2025** est marquée par une consolidation progressive des cours mondiaux 
+        combinée à des efforts structurels de relance agricole en RDC. Malgré les défis logistiques persistants 
+        à l'Est du pays, la production affiche une dynamique intéressante sous l'impulsion des coopératives locales.
+        """
+    )
     
-    # Indicateurs 2025
-    col_news1, col_news2, col_news3, col_news4 = st.columns(4)
-    with col_news1:
-        st.markdown("<div class='kpi-box'><div class='kpi-value'>11 450 t</div><div class='kpi-label'>Prod. Robusta 2025 (Est.)</div></div>", unsafe_allowed_html=True)
-    with col_news2:
-        st.markdown("<div class='kpi-box'><div class='kpi-value'>4 120 t</div><div class='kpi-label'>Prod. Arabica 2025 (Est.)</div></div>", unsafe_allowed_html=True)
-    with col_news3:
-        st.markdown("<div class='kpi-box'><div class='kpi-value'>2.85 $/kg</div><div class='kpi-label'>Prix Moyen Robusta 2025</div></div>", unsafe_allowed_html=True)
-    with col_news4:
-        st.markdown("<div class='kpi-box'><div class='kpi-value'>5.10 $/kg</div><div class='kpi-label'>Prix Moyen Arabica 2025</div></div>", unsafe_allowed_html=True)
+    # Cartes d'indicateurs natifs Streamlit pour 2025 (Évite les bugs CSS)
+    c1, c2, c3, c4 = st.columns(4)
+    with c1:
+        st.metric(label="Prod. Robusta 2025 (Est.)", value="11 450 t")
+    with c2:
+        st.metric(label="Prod. Arabica 2025 (Est.)", value="4 120 t")
+    with c3:
+        st.metric(label="Prix Moyen Robusta 2025", value="2.85 $/kg")
+    with c4:
+        st.metric(label="Prix Moyen Arabica 2025", value="5.10 $/kg")
         
-    st.markdown("<br><hr>", unsafe_allowed_html=True)
+    st.markdown("---")
     
+    # Présentation générale
     col_intro, col_img_side = st.columns([3, 2])
     with col_intro:
         st.markdown("### Objectifs de la Plateforme")
         st.write(
             """
-            **Congo Coffee Data** est un outil d'appui à la recherche économique dédié à la filière café en RDC. 
+            **DRC Coffee Data** est un outil d'appui à la recherche économique dédié à la filière café en RDC. 
             Il vise à réduire l’asymétrie d’information sur le marché en mettant à disposition des séries temporelles épurées.
             
             L'architecture de l'application s'articule autour de trois dimensions :
@@ -183,11 +110,11 @@ if section == "Accueil & Actualités":
 # ----------------------------
 elif section == "Production et Prix":
 
-    st.markdown("### Évolution de la Production et des Prix du Café")
+    st.subheader("Analyse de la production et des prix du café")
     tab1, tab2 = st.tabs(["📊 Données Annuelles", "📈 Données Mensuelles"])
 
     with tab1:
-        st.markdown("#### Analyse des tendances de long terme")
+        st.markdown("### Analyse des tendances de long terme")
         try:
             df_ann_prod = load_excel(URL_PRODUCTION_PRIX, "Annual Production")
             df_ann_price = load_excel(URL_PRODUCTION_PRIX, "Annual Price")
@@ -207,16 +134,15 @@ elif section == "Production et Prix":
             x = df_graph_ann.columns[0]
             y = 'Total' if 'Total' in df_graph_ann.columns else df_graph_ann.columns[1]
 
-            fig = px.line(df_graph_ann, x=x, y=y, title=f"Trajectoire temporelle de la production annuelle globale (en tonnes)")
-            fig.update_traces(line_color='#8B5A2B', line_width=3)
-            fig.update_layout(template="plotly_white", font_family="Plus Jakarta Sans")
+            fig = px.line(df_graph_ann, x=x, y=y, title=f"Trajectoire de la production annuelle globale (en tonnes)")
+            fig.update_layout(template="plotly_white")
             st.plotly_chart(fig, use_container_width=True)
 
         except Exception as e:
             st.error(f"Erreur lors du chargement des données annuelles : {e}")
 
     with tab2:
-        st.markdown("#### Fluctuations mensuelles des marchés")
+        st.markdown("### Fluctuations mensuelles des marchés")
         try:
             df_mth_prod = load_excel(URL_PRODUCTION_PRIX, "Monthly Production")
             df_mth_price = load_excel(URL_PRODUCTION_PRIX, "Monthly Price")
@@ -237,12 +163,12 @@ elif section == "Production et Prix":
 # ----------------------------
 elif section == "Données macroéconomiques":
 
-    st.markdown("### Analyse Macroéconomique de la Filière Café")
+    st.subheader("Analyse macroéconomique de la filière café")
 
     try:
         df_ardl = load_excel(URL_DATA_SITE, "Data for ARDL")
 
-        st.markdown("#### Base de données macroéconomiques brute")
+        st.write("### Base de données macroéconomiques brute")
         st.dataframe(df_ardl, use_container_width=True)
 
         # --- NETTOYAGE SÉCURISÉ POUR L'ANALYSE ---
@@ -257,13 +183,13 @@ elif section == "Données macroéconomiques":
         
         df_clean = df_clean.dropna()
 
-        # --- AJOUT N°2 : ANALYSE DES PICS HISTORIQUES ---
-        st.markdown("#### 🏔️ Analyse des Points de Retournement (Pics Historiques)")
-        st.write("Ce module calcule de manière dynamique le niveau maximum historique atteint par chaque variable de votre modèle économétrique :")
+        # --- MODULE DES PICS HISTORIQUES ---
+        st.markdown("### 🏔️ Analyse des Points de Retournement (Pics Historiques)")
+        st.write("Calcul dynamique des niveaux maximums atteints par les variables clés de votre modèle :")
         
-        # Calcul automatique des maximums
         variables_macro = [c for c in df_clean.columns if c != col_temps]
         
+        # Affichage sous forme de colonnes
         kpi_cols = st.columns(len(variables_macro) if len(variables_macro) <= 4 else 3)
         
         for i, var in enumerate(variables_macro):
@@ -271,46 +197,42 @@ elif section == "Données macroéconomiques":
             val_max = df_clean[var].max()
             annee_max = int(df_clean.loc[idx_max, col_temps])
             
-            # Formatage d'unité basique
-            unite = "t" if "Production" in var else ("$/kg" if "Prix" in var else ("%" if "Inflation" in var else "CDF/USD"))
+            # Détermination automatique des unités
+            unite = "t" if "Production" in var else ("$/kg" if "Prix" in var else ("%" if "Inflation" in var else "USD/CDF"))
             
             with kpi_cols[i % len(kpi_cols)]:
-                st.markdown(f"""
-                <div class='kpi-box' style='border-top: 4px solid #4A2E2B; margin-bottom:15px;'>
-                    <div class='kpi-label'>{var}</div>
-                    <div class='kpi-value'>{val_max:,.2f} {unite}</div>
-                    <div class='kpi-label' style='color:#8B5A2B;'>Année Pic : {annee_max}</div>
-                </div>
-                """, unsafe_allowed_html=True)
+                st.metric(
+                    label=f"Pic : {var}",
+                    value=f"{val_max:,.2f} {unite}",
+                    delta=f"Année : {annee_max}",
+                    delta_color="off"
+                )
 
-        st.markdown("<br>", unsafe_allowed_html=True)
+        st.markdown("---")
 
         # --- GRAPHIQUE TEMPOREL ---
-        st.markdown("#### Analyse graphique temporelle")
+        st.markdown("### Analyse graphique temporelle")
         variables = list(df_clean.columns)
         x_axis = variables[0]
         y_var = st.selectbox("Sélectionner la variable macroéconomique à tracer :", variables[1:])
 
         fig = px.line(df_clean, x=x_axis, y=y_var, title=f"Trajectoire de la variable : {y_var}")
-        fig.update_traces(line_color='#4A2E2B', line_width=3)
-        fig.update_layout(template="plotly_white", font_family="Plus Jakarta Sans")
+        fig.update_layout(template="plotly_white")
         st.plotly_chart(fig, use_container_width=True)
 
         # --- MATRICE DE CORRÉLATION ---
-        st.markdown("#### Matrice de corrélation de Pearson")
+        st.markdown("### Matrice de corrélation de Pearson")
         colonnes_calcul = [c for c in df_clean.columns if c != col_temps]
         corr = df_clean[colonnes_calcul].corr()
 
         fig_corr = px.imshow(
             corr, 
             text_auto=".2f", 
-            color_continuous_scale="Brwnyl",
+            color_continuous_scale="RdBu_r",
             title="Coefficients de corrélation linéaire"
         )
-        fig_corr.update_layout(font_family="Plus Jakarta Sans")
         st.plotly_chart(fig_corr, use_container_width=True)
 
     except Exception as e:
         st.error(f"Erreur lors du traitement des données ARDL : {e}")
-    
-
+        
