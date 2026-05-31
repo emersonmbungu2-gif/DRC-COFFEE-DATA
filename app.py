@@ -52,16 +52,14 @@ def load_excel(url, sheet):
 # ----------------------------
 if section == "Accueil":
 
-    st.subheader("Plateforme d'information sur la filière café en République Démocratique du Congo")
-
     st.write(
         """
         Congo Coffee Data est une plateforme de données économiques dédiée à la filière café en RDC.
         
         Elle vise à réduire l’asymétrie d’information en mettant à disposition des données fiables sur :
-        - la production
-        - les prix
-        - les variables macroéconomiques liées au secteur
+        - la production ;
+        - les prix ;
+        - les variables macroéconomiques liées au secteur.
 
         La plateforme s’adresse aux producteurs, acheteurs, investisseurs, institutions publiques et chercheurs.
         """
@@ -179,20 +177,5 @@ elif section == "Données macroéconomiques (ARDL)":
         fig.update_layout(template="plotly_white")
         st.plotly_chart(fig, use_container_width=True)
 
-        # --- MATRICE DE CORRÉLATION ---
-        st.markdown("### Corrélation entre variables (Pearson)")
-        
-        # On exclut la colonne temporelle pour ne pas fausser la corrélation macroéconomique
-        colonnes_calcul = [c for c in df_clean.columns if c != col_temps]
-        corr = df_clean[colonnes_calcul].corr()
-
-        fig_corr = px.imshow(
-            corr, 
-            text_auto=".2f", 
-            color_continuous_scale="RdBu_r",
-            title="Coefficients de corrélation linéaire"
-        )
-        st.plotly_chart(fig_corr, use_container_width=True)
-
-    except Exception as e:
+            except Exception as e:
         st.error(f"Erreur lors du traitement des données ARDL : {e}")
