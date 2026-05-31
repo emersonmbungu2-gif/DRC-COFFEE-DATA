@@ -226,7 +226,7 @@ elif section == "Production et Prix":
 # ----------------------------
 elif section == "Données macroéconomiques":
 
-    st.subheader("Analyse macroéconomique de la filière café")
+    st.subheader("Data is ready!")
 
     try:
         df_ardl = load_excel(URL_DATA_SITE, "Data for ARDL")
