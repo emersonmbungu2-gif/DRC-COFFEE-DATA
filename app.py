@@ -88,7 +88,7 @@ if section == "Accueil":
     # ACTUALITÉS
     # ----------------------------
     st.markdown("---")
-    st.subheader("Actualités 2025")
+    st.subheader("Actualités")
     st.caption("Voici les chiffres clés de la filière café en RDC pour l'année 2025.")
 
     try:
