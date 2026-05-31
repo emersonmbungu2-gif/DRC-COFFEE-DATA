@@ -59,9 +59,9 @@ if section == "Accueil":
         Congo Coffee Data est une plateforme de données économiques dédiée à la filière café en RDC.
         
         Elle vise à réduire l’asymétrie d’information en mettant à disposition des données fiables sur :
-        - la production
-        - les prix
-        - les variables macroéconomiques liées au secteur
+        - la production ;
+        - les prix ;
+        - les variables macroéconomiques liées au secteur.
 
         La plateforme s’adresse aux producteurs, acheteurs, investisseurs, institutions publiques et chercheurs.
         """
