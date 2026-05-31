@@ -163,7 +163,7 @@ if section == "Accueil":
 # ----------------------------
 elif section == "Production et Prix":
 
-    st.subheader("Analyse de la production et des prix du café")
+    st.subheader("Production et Prix")
 
     tab1, tab2 = st.tabs(["Données annuelles", "Données mensuelles"])
 
@@ -226,7 +226,7 @@ elif section == "Production et Prix":
 # ----------------------------
 elif section == "Données macroéconomiques":
 
-    st.subheader("Analyse macroéconomiques de la filière du café")
+    st.subheader("Données, Statistiques & Graphiques")
 
     try:
         df_ardl = load_excel(URL_DATA_SITE, "Data for ARDL")
