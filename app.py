@@ -85,11 +85,11 @@ if section == "Accueil":
     )
 
     # ----------------------------
-    # ACTUALITÉS 2025
+    # ACTUALITÉS
     # ----------------------------
     st.markdown("---")
     st.subheader("Actualités 2025")
-    st.caption("Chiffres clés de la filière café en RDC pour l'année 2025")
+    st.caption("Voici les chiffres clés de la filière café en RDC pour l'année 2025.")
 
     try:
         df_prod_ann = clean_numeric_df(load_excel(URL_PRODUCTION_PRIX, "Annual Production"))
@@ -151,8 +151,8 @@ if section == "Accueil":
         else:
             st.warning("Aucune donnée de prix disponible pour 2025.")
 
-        st.caption("Sources : Banque Centrale du Congo & Banque mondiale")
-        st.caption("Développé par Emerson Mbungu")
+        st.caption("Sources : Banque Centrale du Congo & Banque mondiale.")
+        st.caption("Développé par Emerson Mbungu.")
 
     except Exception as e:
         st.error(f"Erreur lors du chargement des actualités 2025 : {e}")
