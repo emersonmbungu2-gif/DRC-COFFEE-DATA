@@ -56,7 +56,7 @@ section = st.sidebar.radio(
     [
         "Accueil",
         "Production et Prix",
-        "Données macroéconomiques (ARDL)"
+        "Données macroéconomiques"
     ]
 )
 
@@ -151,7 +151,7 @@ if section == "Accueil":
         else:
             st.warning("Aucune donnée de prix disponible pour 2025.")
 
-        st.caption("Source : Office National du Café (ONC) — RDC.")
+        st.caption("Sources : Banque Centrale du Congo & Banque mondiale")
 
     except Exception as e:
         st.error(f"Erreur lors du chargement des actualités 2025 : {e}")
@@ -221,16 +221,16 @@ elif section == "Production et Prix":
             st.error(f"Erreur lors du chargement des données mensuelles : {e}")
 
 # ----------------------------
-# SECTION 3 : ARDL
+# SECTION 3 : Données macroéconomiques
 # ----------------------------
-elif section == "Données macroéconomiques (ARDL)":
+elif section == "Données macroéconomiques":
 
     st.subheader("Analyse macroéconomique de la filière café")
 
     try:
         df_ardl = load_excel(URL_DATA_SITE, "Data for ARDL")
 
-        st.write("### Base de données macroéconomiques brute")
+        st.write("### Base de données macroéconomiques")
         st.dataframe(df_ardl, use_container_width=True)
 
         # --- NETTOYAGE SÉCURISÉ POUR L'ANALYSE ---
