@@ -1,3 +1,13 @@
+import streamlit as st
+import pandas as pd
+import plotly.express as px
+
+# Configuration
+st.set_page_config(
+    page_title="Congo Coffee Data",
+    layout="wide"
+)
+
 # ----------------------------
 # NAVIGATION
 # ----------------------------
