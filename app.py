@@ -226,12 +226,12 @@ elif section == "Production et Prix":
 # ----------------------------
 elif section == "Données macroéconomiques":
 
-    st.subheader("Data is ready!")
+    st.subheader("Analyse macroéconomiques")
 
     try:
         df_ardl = load_excel(URL_DATA_SITE, "Data for ARDL")
 
-        st.write("### Base de données macroéconomiques")
+        st.write("### Base de données")
         st.dataframe(df_ardl, use_container_width=True)
 
         # --- NETTOYAGE SÉCURISÉ POUR L'ANALYSE ---
