@@ -106,3 +106,16 @@ annee_min = df_clean.loc[
 
 st.write(f"📈 Pic observé en : **{annee_max}**")
 st.write(f"📉 Creux observé en : **{annee_min}**")
+
+elif section == "Données macroéconomiques (ARDL)":
+
+    st.subheader("Analyse macroéconomique de la filière café")
+
+    try:
+        df_ardl = load_excel(URL_DATA_SITE, "Data for ARDL")
+
+        st.write("### Base de données macroéconomiques brute")
+        st.dataframe(df_ardl, use_container_width=True)
+
+    except Exception as e:
+        st.error(f"Erreur lors du chargement : {e}")
