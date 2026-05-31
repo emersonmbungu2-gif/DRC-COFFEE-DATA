@@ -65,7 +65,7 @@ section = st.sidebar.radio(
 # ----------------------------
 if section == "Accueil":
 
-    st.subheader("")
+    st.subheader("Welcome!")
 
     st.write(
         """
