@@ -83,7 +83,7 @@ elif section == "Production et Prix":
 
     # -------- ANNUEL --------
     with tab1:
-        st.markdown("Analyse des tendances annuelles")
+        st.markdown("### Analyse des tendances annuelles")
 
         try:
             df_ann_prod = load_excel(URL_PRODUCTION_PRIX, "Annual Production")
@@ -92,27 +92,34 @@ elif section == "Production et Prix":
             col1, col2 = st.columns(2)
 
             with col1:
-                st.write("Production annuelle")
+                st.write("**Production annuelle (en tonnes)**")
                 st.dataframe(df_ann_prod, use_container_width=True)
 
             with col2:
-                st.write("Prix annuels")
+                st.write("**Prix annuels ($/kg)**")
                 st.dataframe(df_ann_price, use_container_width=True)
 
-            # Graphique simple production
-            x = df_ann_prod.columns[0]
-            y = df_ann_prod.columns[1]
+            # --- NETTOYAGE ET GRAPH_ANNUEL ---
+            # On ignore la ligne des unités pour le graphique
+            df_graph_ann = df_ann_prod.copy()
+            df_graph_ann[df_graph_ann.columns[0]] = pd.to_numeric(df_graph_ann[df_graph_ann.columns[0]], errors='coerce')
+            df_graph_ann = df_graph_ann.dropna(subset=[df_graph_ann.columns[0]])
+            
+            x = df_graph_ann.columns[0]
+            # On utilise le 'Total' si disponible, sinon la 2ème colonne
+            y = 'Total' if 'Total' in df_graph_ann.columns else df_graph_ann.columns[1]
 
-            fig = px.line(df_ann_prod, x=x, y=y)
+            fig = px.line(df_graph_ann, x=x, y=y, title=f"Évolution de la production annuelle globale ({y})")
+            fig.update_layout(template="plotly_white")
             st.plotly_chart(fig, use_container_width=True)
 
         except Exception as e:
-            st.error("Erreur lors du chargement des données annuelles")
+            st.error(f"Erreur lors du chargement des données annuelles : {e}")
 
 
     # -------- MENSUEL --------
     with tab2:
-        st.markdown("Analyse des tendances mensuelles")
+        st.markdown("### Analyse des tendances mensuelles")
 
         try:
             df_mth_prod = load_excel(URL_PRODUCTION_PRIX, "Monthly Production")
@@ -121,15 +128,15 @@ elif section == "Production et Prix":
             col1, col2 = st.columns(2)
 
             with col1:
-                st.write("Production mensuelle")
+                st.write("**Production mensuelle (en tonnes)**")
                 st.dataframe(df_mth_prod, use_container_width=True)
 
             with col2:
-                st.write("Prix mensuels")
+                st.write("**Prix mensuels ($/kg)**")
                 st.dataframe(df_mth_price, use_container_width=True)
 
-        except Exception:
-            st.error("Erreur lors du chargement des données mensuelles")
+        except Exception as e:
+            st.error(f"Erreur lors du chargement des données mensuelles : {e}")
 
 
 # ----------------------------
@@ -142,33 +149,50 @@ elif section == "Données macroéconomiques (ARDL)":
     try:
         df_ardl = load_excel(URL_DATA_SITE, "Data for ARDL")
 
-        st.write("Base de données macroéconomiques")
+        st.write("### Base de données macroéconomiques brute")
         st.dataframe(df_ardl, use_container_width=True)
 
-        # Nettoyage minimal
-        df_ardl = df_ardl.copy()
+        # --- NETTOYAGE SÉCURISÉ POUR L'ANALYSE ---
+        df_clean = df_ardl.copy()
+        
+        # 1. Sauvegarder le nom de la première colonne (Période / Année)
+        col_temps = df_clean.columns[0]
+        
+        # 2. Convertir la colonne temporelle en numérique et supprimer la ligne d'unités textuelles
+        df_clean[col_temps] = pd.to_numeric(df_clean[col_temps], errors="coerce")
+        df_clean = df_clean.dropna(subset=[col_temps])
 
-        for col in df_ardl.columns:
-            df_ardl[col] = pd.to_numeric(df_ardl[col], errors="coerce")
+        # 3. Convertir toutes les autres colonnes de variables en numérique
+        for col in df_clean.columns:
+            df_clean[col] = pd.to_numeric(df_clean[col], errors="coerce")
+        
+        df_clean = df_clean.dropna()
 
-        df_ardl = df_ardl.dropna()
-
-        st.markdown("Analyse temporelle")
-
-        variables = list(df_ardl.columns)
+        # --- GRAPHIQUE TEMPOREL ---
+        st.markdown("### Analyse temporelle")
+        variables = list(df_clean.columns)
 
         x_axis = variables[0]
-        y_var = st.selectbox("Variable à analyser", variables[1:])
+        y_var = st.selectbox("Sélectionner la variable à analyser", variables[1:])
 
-        fig = px.line(df_ardl, x=x_axis, y=y_var)
+        fig = px.line(df_clean, x=x_axis, y=y_var, title=f"Trajectoire de la variable : {y_var}")
+        fig.update_layout(template="plotly_white")
         st.plotly_chart(fig, use_container_width=True)
 
-        st.markdown("Corrélation entre variables")
+        # --- MATRICE DE CORRÉLATION ---
+        st.markdown("### Corrélation entre variables (Pearson)")
+        
+        # On exclut la colonne temporelle pour ne pas fausser la corrélation macroéconomique
+        colonnes_calcul = [c for c in df_clean.columns if c != col_temps]
+        corr = df_clean[colonnes_calcul].corr()
 
-        corr = df_ardl.corr()
-
-        fig_corr = px.imshow(corr, text_auto=True)
+        fig_corr = px.imshow(
+            corr, 
+            text_auto=".2f", 
+            color_continuous_scale="RdBu_r",
+            title="Coefficients de corrélation linéaire"
+        )
         st.plotly_chart(fig_corr, use_container_width=True)
 
-    except Exception:
-        st.error("Erreur lors du chargement des données ARDL")
+    except Exception as e:
+        st.error(f"Erreur lors du traitement des données ARDL : {e}")
