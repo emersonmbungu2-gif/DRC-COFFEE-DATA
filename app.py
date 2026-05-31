@@ -2,102 +2,139 @@ import streamlit as st
 import pandas as pd
 import plotly.express as px
 
-# 1. Configuration de la page de l'application
-st.set_page_config(page_title="Congo Coffee Data", layout="wide", page_icon="☕")
+# 1. Configuration de la page (Style épuré et académique)
+st.set_page_config(page_title="Congo Coffee Data", layout="wide")
 
-# 2. Définition des URLs brutes (Raw) de vos fichiers sur GitHub
+# 2. Définition des URLs brutes (Raw) GitHub
 url_production_prix = "https://raw.githubusercontent.com/emersonmbungu2-gif/DRC-COFFEE-DATA/main/Production%20et%20prix%20du%20caf%C3%A9.xlsx"
 url_data_site = "https://raw.githubusercontent.com/emersonmbungu2-gif/DRC-COFFEE-DATA/main/Data%20for%20site.xlsx"
 
-# 3. Titre principal de la plateforme
-st.title("☕ Congo Coffee Data")
+# 3. Titre de la plateforme
+st.title("Congo Coffee Data")
+st.markdown("##### Plateforme d'analyse macroéconomique et sectorielle de la filière café en RDC")
 st.markdown("---")
 
-# 4. Menu latéral de navigation
-st.sidebar.header("🧭 Navigation")
+# 4. Barre latérale de navigation
+st.sidebar.header("Navigation")
 section = st.sidebar.radio(
-    "Choisir une analyse :",
-    ["Accueil & Objectifs", "Production & Prix du Café", "Modélisation (Données ARDL)"]
+    "Sélectionner un module :",
+    ["Présentation du Projet", "Analyse de la Production et des Prix", "Modélisation et Corrélations (ARDL)"]
 )
 
-# --- SECTION 1 : ACCUEIL ---
-if section == "Accueil & Objectifs":
-    st.subheader("Visualisation et Analyse de la Filière Café en RDC")
+# --- SECTION 1 : PRÉSENTATION ---
+if section == "Présentation du Projet":
+    st.header("Objectifs de la plateforme")
     st.write(
-        "Ce tableau de bord interactif centralise les données sur la production, "
-        "les prix, l'inflation et le taux de change en République Démocratique du Congo. "
-        "Il permet d'explorer les dynamiques du secteur et d'appuyer les analyses macroéconomiques."
+        "Ce tableau de bord interactif centralise les données relatives à la production, "
+        "aux prix, à l'inflation et au taux de change en République Démocratique du Congo. "
+        "Conçu comme un outil d'appui à la recherche économique, il permet d'explorer les dynamiques "
+        "sectorielles et d'analyser les tendances structurelles de la filière."
     )
-    st.info("💡 Utilisez le menu de gauche pour basculer entre les données de production et les variables du modèle économétrique.")
+    st.info("Utilisez le menu latéral pour naviguer entre les analyses statistiques et les données de modélisation.")
 
 # --- SECTION 2 : PRODUCTION & PRIX ---
-elif section == "Production & Prix du Café":
-    st.subheader("📊 Analyse Sectorielle : Production et Évolution des Prix")
+elif section == "Analyse de la Production et des Prix":
+    st.header("Analyse Sectorielle : Évolution de la Production et des Prix")
     
-    # Création d'onglets pour séparer l'analyse annuelle et mensuelle
-    tab1, tab2 = st.tabs(["📅 Données Annuelles", "📆 Données Mensuelles"])
+    tab1, tab2 = st.tabs(["Données Annuelles", "Données Mensuelles"])
     
     with tab1:
-        st.markdown("### Évolution Annuelle")
         try:
-            # Chargement des feuilles correspondantes
             df_ann_prod = pd.read_excel(url_production_prix, sheet_name="Annual Production")
             df_ann_price = pd.read_excel(url_production_prix, sheet_name="Annual Price")
             
-            col1, col2 = st.columns(2)
-            with col1:
-                st.write("**Volume de Production Annuelle**")
+            # Nettoyage rapide des lignes de sous-titres vides si elles existent
+            df_ann_prod = df_ann_prod.dropna(subset=[df_ann_prod.columns[0]])
+            
+            # Graphique interactif de la production annuelle (Total)
+            col_x_prod = df_ann_prod.columns[0]  # Période / Année
+            col_y_prod = 'Total' if 'Total' in df_ann_prod.columns else df_ann_prod.columns[1]
+            
+            fig_prod = px.line(df_ann_prod, x=col_x_prod, y=col_y_prod, 
+                               title="Évolution de la production annuelle globale de café (en tonnes)", markers=True)
+            fig_prod.update_layout(template="plotly_white")
+            st.plotly_chart(fig_prod, use_container_width=True)
+            
+            # Affichage des données en deux colonnes sous le graphique
+            c1, c2 = st.columns(2)
+            with c1:
+                st.subheader("Volume de la Production Annuelle")
                 st.dataframe(df_ann_prod, use_container_width=True)
-            with col2:
-                st.write("**Prix Annuels**")
+            with c2:
+                st.subheader("Historique des Prix Annuels ($/kg)")
                 st.dataframe(df_ann_price, use_container_width=True)
                 
         except Exception as e:
-            st.error(f"Erreur lors du chargement des données annuelles : {e}")
+            st.error(f"Erreur lors de l'analyse des données annuelles : {e}")
             
     with tab2:
-        st.markdown("### Évolution Mensuelle")
         try:
             df_mth_prod = pd.read_excel(url_production_prix, sheet_name="Monthly Production")
             df_mth_price = pd.read_excel(url_production_prix, sheet_name="Monthly Price")
             
-            col1, col2 = st.columns(2)
-            with col1:
-                st.write("**Production Mensuelle**")
+            c1, c2 = st.columns(2)
+            with c1:
+                st.subheader("Suivi Mensuel de la Production (en tonnes)")
                 st.dataframe(df_mth_prod, use_container_width=True)
-            with col2:
-                st.write("**Prix Mensuels**")
+            with c2:
+                st.subheader("Suivi Mensuel des Prix ($/kg)")
                 st.dataframe(df_mth_price, use_container_width=True)
                 
         except Exception as e:
-            st.error(f"Erreur lors du chargement des données mensuelles : {e}")
+            st.error(f"Erreur lors de l'analyse des données mensuelles : {e}")
 
-# --- SECTION 3 : DONNÉES ARDL ---
-elif section == "Modélisation (Données ARDL)":
-    st.subheader("📈 Variables Macroéconomiques & Modèle ARDL")
-    st.write("Cette section présente les données nettoyées utilisées pour l'analyse économétrique.")
+# --- SECTION 3 : DONNÉES ARDL & STATISTIQUES ---
+elif section == "Modélisation et Corrélations (ARDL)":
+    st.header("Variables Macroéconomiques et Exploration Économétrique")
     
     try:
-        # Chargement de la feuille "Data for ARDL" du fichier Data for site.xlsx
         df_ardl = pd.read_excel(url_data_site, sheet_name="Data for ARDL")
         
-        st.success("Données ARDL chargées avec succès depuis GitHub !")
-        st.dataframe(df_ardl, use_container_width=True)
+        # Nettoyage des lignes d'unités pour le calcul statistique (ex: la ligne contenant (t) ou ($/kg))
+        # On ne garde que les lignes où la première colonne est une année numérique valide
+        df_ardl[df_ardl.columns[0]] = pd.to_numeric(df_ardl[df_ardl.columns[0]], errors='coerce')
+        df_ardl = df_ardl.dropna(subset=[df_ardl.columns[0]])
         
-        # --- AJOUT D'UN GRAPHIQUE DYNAMIQUE ---
-        st.markdown("### 📊 Graphique Interactif des Variables")
-        # Permet à l'étudiant ou au chercheur de choisir la variable à afficher sur l'axe Y
-        colonnes_disponibles = [col for col in df_ardl.columns if col not in ['Year', 'Annee', 'Date']]
-        
-        if colonnes_disponibles:
-            variable_choisie = st.selectbox("Sélectionnez une variable à analyser :", colonnes_disponibles)
-            axe_x = 'Year' if 'Year' in df_ardl.columns else df_ardl.columns[0]
+        # Convertir les autres colonnes en numérique pour éviter les conflits de calcul
+        for col in df_ardl.columns:
+            df_ardl[col] = pd.to_numeric(df_ardl[col], errors='coerce')
             
-            fig = px.line(df_ardl, x=axe_x, y=variable_choisie, 
-                          title=f"Évolution de la variable {variable_choisie} dans le temps",
-                          markers=True)
-            st.plotly_chart(fig, use_container_width=True)
+        # 1. Résumé statistique automatique
+        st.subheader("Analyse Descriptive : Résumé statistique des variables")
+        st.write("Ce tableau présente les moments clés (Moyenne, Écart-type, Minimum, Maximum) de votre série temporelle :")
+        st.dataframe(df_ardl.describe(), use_container_width=True)
+        
+        # 2. Graphique temporel interactif
+        st.subheader("Analyse Graphique Temporelle")
+        colonnes_numeriques = [col for col in df_ardl.columns if col not in ['Période', 'Year', 'Annee', 'Date']]
+        
+        if colonnes_numeriques:
+            variable_selectionnee = st.selectbox("Sélectionner la variable à tracer sur l'axe des ordonnées :", colonnes_numeriques)
+            axe_temporel = df_ardl.columns[0]
+            
+            fig_temporal = px.line(df_ardl, x=axe_temporel, y=variable_selectionnee, 
+                                   title=f"Trajectoire temporelle de la variable : {variable_selectionnee}",
+                                   markers=True)
+            fig_temporal.update_layout(template="plotly_white")
+            st.plotly_chart(fig_temporal, use_container_width=True)
+            
+            # 3. Matrice de corrélation linéaire
+            st.subheader("Matrice de Corrélation de Pearson")
+            st.write("Analyse pré-estimatoire de l'intensité des liaisons linéaires entre vos variables macroéconomiques.")
+            
+            # Calcul de la matrice sur les colonnes numériques valides
+            df_corr_input = df_ardl[colonnes_numeriques].dropna()
+            corr_matrix = df_corr_input.corr()
+            
+            fig_corr = px.imshow(corr_matrix, text_auto=".2f", 
+                                 title="Coefficients de corrélation linéaire",
+                                 color_continuous_scale="RdBu_r", aspect="auto")
+            fig_corr.update_layout(template="plotly_white")
+            st.plotly_chart(fig_corr, use_container_width=True)
+            
+        st.subheader("Base de données complète (Data for ARDL)")
+        st.dataframe(df_ardl, use_container_width=True)
             
     except Exception as e:
-        st.error(f"Erreur lors du chargement de la feuille ARDL : {e}")
+        st.error(f"Erreur lors du traitement du fichier ARDL : {e}")
   
