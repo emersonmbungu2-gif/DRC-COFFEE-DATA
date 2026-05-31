@@ -1,4 +1,18 @@
 # ----------------------------
+# NAVIGATION
+# ----------------------------
+st.sidebar.header("Navigation")
+
+section = st.sidebar.radio(
+    "Choisir une section",
+    [
+        "Accueil",
+        "Production et Prix",
+        "Données macroéconomiques (ARDL)"
+    ]
+)
+
+# ----------------------------
 # SECTION 1 : ACCUEIL
 # ----------------------------
 if section == "Accueil":
