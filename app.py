@@ -6,7 +6,7 @@ import plotly.express as px
 # CONFIGURATION GÉNÉRALE
 # ----------------------------
 st.set_page_config(
-    page_title="Congo Coffee Data",
+    page_title="DRC Coffee Data",
     layout="wide"
 )
 
@@ -44,7 +44,7 @@ def clean_numeric_df(df, time_col_name=None):
 # ----------------------------
 # TITRE
 # ----------------------------
-st.title("Congo Coffee Data")
+st.title("DRC Coffee Data")
 st.markdown("---")
 
 # ----------------------------
@@ -65,11 +65,11 @@ section = st.sidebar.radio(
 # ----------------------------
 if section == "Accueil":
 
-    st.subheader("Plateforme d'information")
+    st.subheader("")
 
     st.write(
         """
-        Congo Coffee Data est une plateforme de données économiques dédiée à la filière café en RDC.
+        DRC Coffee Data est une plateforme de données économiques dédiée à la filière café en RDC.
 
         Elle vise à réduire l'asymétrie d'information en mettant à disposition des données fiables sur :
         - la production ;
@@ -152,6 +152,7 @@ if section == "Accueil":
             st.warning("Aucune donnée de prix disponible pour 2025.")
 
         st.caption("Sources : Banque Centrale du Congo & Banque mondiale")
+        st.caption("Développé par Emerson Mbungu")
 
     except Exception as e:
         st.error(f"Erreur lors du chargement des actualités 2025 : {e}")
