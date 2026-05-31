@@ -226,7 +226,7 @@ elif section == "Production et Prix":
 # ----------------------------
 elif section == "Données macroéconomiques":
 
-    st.subheader("Analyse macroéconomiques")
+    st.subheader("Analyse macroéconomiques de la filière du café")
 
     try:
         df_ardl = load_excel(URL_DATA_SITE, "Data for ARDL")
@@ -247,7 +247,7 @@ elif section == "Données macroéconomiques":
         df_clean = df_clean.dropna()
 
         # --- TABLEAU DES PICS ---
-        st.markdown("### Tableau récapitulatif des pics")
+        st.markdown("### Statistiques et pics")
         st.caption("Valeurs maximales et minimales observées pour chaque variable macroéconomique, avec les années correspondantes.")
 
         variables_pics = [c for c in df_clean.columns if c != col_temps]
