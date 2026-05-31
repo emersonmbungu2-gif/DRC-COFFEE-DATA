@@ -310,19 +310,6 @@ elif section == "Données macroéconomiques":
 
         st.plotly_chart(fig, use_container_width=True)
 
-        # --- MATRICE DE CORRÉLATION ---
-        st.markdown("### Corrélation entre variables (Pearson)")
-
-        colonnes_calcul = [c for c in df_clean.columns if c != col_temps]
-        corr = df_clean[colonnes_calcul].corr()
-
-        fig_corr = px.imshow(
-            corr,
-            text_auto=".2f",
-            color_continuous_scale="RdBu_r",
-            title="Coefficients de corrélation linéaire"
-        )
-        st.plotly_chart(fig_corr, use_container_width=True)
 
     except Exception as e:
         st.error(f"Erreur lors du traitement des données ARDL : {e}")
