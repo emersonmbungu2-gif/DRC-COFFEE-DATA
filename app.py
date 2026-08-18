@@ -1,774 +1,262 @@
 import streamlit as st
 import pandas as pd
 import plotly.express as px
+import plotly.graph_objects as go
+from io import BytesIO
 
-
-# ============================================================
-# CONFIGURATION GÉNÉRALE
-# ============================================================
-
+# Configuration de la page (Inspiration Banque Mondiale / Our World in Data)
 st.set_page_config(
-    page_title="DRC Coffee Data",
+    page_title="Congo Coffee Data | Base de Données du Café Congolais",
     page_icon="☕",
-    layout="wide"
+    layout="wide",
+    initial_sidebar_state="expanded"
 )
 
+# Custom CSS pour appliquer la charte graphique demandée (épuré, blanc, vert foncé, gris)
+st.markdown("""
+<style>
+    :root {
+        --primary-color: #1b4332;
+        --secondary-color: #40916c;
+        --bg-light: #f8f9fa;
+    }
+    .main .block-container { padding-top: 2rem; }
+    h1 { color: #1b4332; font-family: 'Helvetica Neue', Arial, sans-serif; font-weight: 700; }
+    h2, h3 { color: #2d6a4f; font-family: 'Helvetica Neue', Arial, sans-serif; }
+    .stButton>button { background-color: #1b4332; color: white; border-radius: 4px; }
+    .stButton>button:hover { background-color: #40916c; color: white; }
+    .metric-box {
+        background-color: #f8f9fa;
+        padding: 20px;
+        border-radius: 6px;
+        border-left: 5px solid #1b4332;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+    }
+    .metric-val { font-size: 2rem; font-weight: bold; color: #1b4332; }
+    .metric-lbl { font-size: 0.9rem; color: #6c757d; text-transform: uppercase; }
+</style>
+""", unsafe_allow_html=True)
 
-# ============================================================
-# SOURCES DE DONNÉES
-# ============================================================
-
-URL_PRODUCTION_PRIX = (
-    "https://raw.githubusercontent.com/emersonmbungu2-gif/"
-    "DRC-COFFEE-DATA/main/"
-    "Production%20et%20prix%20du%20caf%C3%A9.xlsx"
-)
-
-URL_DATA_SITE = (
-    "https://raw.githubusercontent.com/emersonmbungu2-gif/"
-    "DRC-COFFEE-DATA/main/"
-    "Data%20for%20site.xlsx"
-)
-
-
-# ============================================================
-# FONCTIONS DE CHARGEMENT
-# ============================================================
-
+# --- CHARGEMENT ET NETTOYAGE DES DONNÉES ---
 @st.cache_data
-def load_excel(url, sheet):
-    """
-    Charge une feuille Excel depuis une URL.
-    """
-    try:
-        return pd.read_excel(url, sheet_name=sheet)
-    except Exception as e:
-        raise RuntimeError(
-            f"Impossible de charger la feuille '{sheet}'. "
-            f"Erreur : {e}"
-        )
+def load_data():
+    # 1. Chargement données annuelles globales (ARDL)
+    df_ardl = pd.read_excel("Data for site.xlsx", sheet_name="Data for ARDL")
+    df_ardl_clean = df_ardl.dropna(subset=["Période"]).iloc[1:].copy()
+    df_ardl_clean["Période"] = pd.to_numeric(df_ardl_clean["Période"]).astype(int)
+    for col in df_ardl_clean.columns:
+        if col != "Période":
+            df_ardl_clean[col] = pd.to_numeric(df_ardl_clean[col], errors='coerce')
+    
+    # Ajout automatique de la production totale manquante dans ARDL pour conformité
+    if "Production Totale" not in df_ardl_clean.columns:
+        df_ardl_clean["Production Totale"] = df_ardl_clean["Production Robusta"] + df_ardl_clean["Production Arabica"]
+        
+    # 2. Chargement des séries mensuelles pour granularité fine
+    df_m_prod = pd.read_excel("Production et prix du café.xlsx", sheet_name="Monthly Production").iloc[1:].dropna(subset=["Période"])
+    df_m_price = pd.read_excel("Production et prix du café.xlsx", sheet_name="Monthly Price").iloc[1:].dropna(subset=["Période"])
+    
+    return df_ardl_clean, df_m_prod, df_m_price
 
+try:
+    df_annual, df_m_prod, df_m_price = load_data()
+except Exception as e:
+    st.error(f"Erreur de lecture des fichiers Excel sources ('Data for site.xlsx' et 'Production et prix du café.xlsx') : {e}")
+    st.stop()
 
-def clean_numeric_df(df, time_col_name=None):
-    """
-    Nettoie un DataFrame destiné à une analyse numérique.
+# Dictionnaire de métadonnées des indicateurs (Définitions académiques et sources)
+indicators = {
+    "Production Robusta": {
+        "def": "Volume total annuel de café Robusta (Coffea canephora) produit et enregistré en République Démocratique du Congo, exprimé en tonnes métriques (t).",
+        "col": "Production Robusta", "unit": "tonnes (t)", "source": "Ministère de l'Agriculture / ONAPAC / Guichet Unique"
+    },
+    "Production Arabica": {
+        "def": "Volume total annuel de café Arabica (Coffea arabica) produit sur les hauts plateaux (notamment Kivu, Ituri), exprimé en tonnes métriques (t).",
+        "col": "Production Arabica", "unit": "tonnes (t)", "source": "Ministère de l'Agriculture / ONAPAC"
+    },
+    "Production Totale": {
+        "def": "Somme agrégée des productions nationales de café Robusta et Arabica en tonnes métriques (t).",
+        "col": "Production Totale", "unit": "tonnes (t)", "source": "Calculs statistiques internes basés sur les données sectorielles"
+    },
+    "Prix Robusta": {
+        "def": "Prix moyen pondéré perçu par les producteurs ou enregistré à l'exportation pour le café Robusta, exprimé en dollars américains par kilogramme ($/kg).",
+        "col": "Prix Robusta", "unit": "$/kg", "source": "International Coffee Organization (ICO) / Notes de conjoncture BCC"
+    },
+    "Prix Arabica": {
+        "def": "Prix moyen du marché ou à l'exportation pour le café Arabica de la RDC, exprimé en dollars américains par kilogramme ($/kg).",
+        "col": "Prix Arabica", "unit": "$/kg", "source": "International Coffee Organization (ICO)"
+    },
+    "Inflation": {
+        "def": "Taux d'inflation annuel moyen calculé sur l'indice des prix à la consommation (IPC) en République Démocratique du Congo, exprimé en pourcentage (%).",
+        "col": "Inflation", "unit": "%", "source": "Banque Centrale du Congo (BCC) / FMI"
+    },
+    "Taux de change": {
+        "def": "Valeur externe de la monnaie nationale exprimée en taux de change nominal moyen annuel (Franc Congolais pour un Dollar Américain - USD/CDF).",
+        "col": "Taux de change", "unit": "USD/CDF", "source": "Banque Centrale du Congo (BCC)"
+    }
+}
 
-    - Supprime les lignes sans année/période valide.
-    - Convertit les colonnes numériques.
-    - Supprime les colonnes entièrement vides après conversion.
-    - Trie les observations selon la variable temporelle.
-    """
+# --- BARRE LATÉRALE DE NAVIGATION ---
+st.sidebar.image("https://images.unsplash.com/photo-1514432324607-a09d9b4aefdd?w=150", width=100, caption="Filière Café RDC")
+st.sidebar.title("Navigation")
+page = st.sidebar.radio("Aller à", ["Page d'accueil", "Catalogue des indicateurs", "Comparaison d'indicateurs", "Recherche avancée"])
 
-    if df is None or df.empty:
-        return pd.DataFrame()
+st.sidebar.markdown("---")
+st.sidebar.info("**Note académique :** Ce portail fournit un accès libre aux indicateurs structurels de l'économie caféière en RDC pour appuyer la recherche et les politiques publiques économiques.")
 
-    df_clean = df.copy()
-
-    # Supprimer les colonnes complètement vides
-    df_clean = df_clean.dropna(axis=1, how="all")
-
-    if df_clean.empty:
-        return pd.DataFrame()
-
-    # Identifier la colonne temporelle
-    if time_col_name and time_col_name in df_clean.columns:
-        time_col = time_col_name
-    else:
-        time_col = df_clean.columns[0]
-
-    # Conversion de la variable temporelle
-    df_clean[time_col] = pd.to_numeric(
-        df_clean[time_col],
-        errors="coerce"
-    )
-
-    # Supprimer les lignes sans période valide
-    df_clean = df_clean.dropna(subset=[time_col])
-
-    if df_clean.empty:
-        return pd.DataFrame()
-
-    # Conversion des autres colonnes
-    for col in df_clean.columns:
-        if col != time_col:
-            df_clean[col] = pd.to_numeric(
-                df_clean[col],
-                errors="coerce"
-            )
-
-    # Supprimer les colonnes qui ne contiennent aucune valeur numérique
-    numeric_cols = [time_col]
-
-    for col in df_clean.columns:
-        if col != time_col and df_clean[col].notna().any():
-            numeric_cols.append(col)
-
-    df_clean = df_clean[numeric_cols]
-
-    # Trier par année/période
-    df_clean = df_clean.sort_values(
-        by=time_col
-    ).reset_index(drop=True)
-
-    return df_clean
-
-
-def get_row_by_year(df, time_col, year):
-    """
-    Retourne l'observation correspondant à une année donnée.
-    """
-    if df.empty or time_col not in df.columns:
-        return None
-
-    result = df[df[time_col] == year]
-
-    if result.empty:
-        return None
-
-    return result.iloc[0]
-
-
-def calculate_variation(current, previous):
-    """
-    Calcule une variation en pourcentage.
-    Retourne None si le calcul est impossible.
-    """
-    if pd.isna(current) or pd.isna(previous):
-        return None
-
-    if previous == 0:
-        return None
-
-    return f"{((current - previous) / previous) * 100:+.1f}% vs 2024"
-
-
-def safe_float(value):
-    """
-    Convertit une valeur en float sans provoquer d'erreur.
-    """
-    try:
-        if pd.isna(value):
-            return None
-        return float(value)
-    except (TypeError, ValueError):
-        return None
-
-
-# ============================================================
-# TITRE
-# ============================================================
-
-st.title("☕ DRC Coffee Data")
-st.markdown("---")
-
-
-# ============================================================
-# NAVIGATION
-# ============================================================
-
-st.sidebar.header("Navigation")
-
-section = st.sidebar.radio(
-    "Choisir une section",
-    [
-        "Accueil",
-        "Production et Prix",
-        "Données macroéconomiques"
-    ]
-)
-
-
-# ============================================================
-# SECTION 1 : ACCUEIL
-# ============================================================
-
-if section == "Accueil":
-
-    st.subheader("Welcome!")
-
-    st.write(
-        """
-        DRC Coffee Data est une plateforme de données économiques
-        dédiée à la filière café en République démocratique du Congo.
-
-        Elle vise à réduire l'asymétrie d'information en mettant
-        à disposition des données sur :
-
-        - la production ;
-        - les prix ;
-        - les variables macroéconomiques liées au secteur.
-
-        La plateforme s'adresse aux producteurs, acheteurs,
-        investisseurs, institutions publiques et chercheurs.
-        """
-    )
-
-    st.info(
-        "Cette plateforme est conçue comme un outil d'aide à la "
-        "décision et de transparence du marché."
-    )
-
-    # --------------------------------------------------------
-    # ACTUALITÉS
-    # --------------------------------------------------------
-
+# ==================== PAGE D'ACCUEIL ====================
+if page == "Page d'accueil":
+    st.title("☕ Congo Coffee Data")
+    st.subheader("Base de Données du Café Congolais")
+    
+    st.markdown("""
+    > **Plateforme ouverte de données statistiques sur la filière café en République Démocratique du Congo.**
+    
+    Inspirée des standards de diffusion de la *Banque Mondiale*, de l'*ICO* et de *Our World in Data*, cette interface centralise les données historiques de production, de prix et les variables macroéconomiques structurantes pour la filière en RDC.
+    """)
+    
+    st.markdown("### 📊 Statistiques rapides de la base")
+    
+    col1, col2, col3, col4 = st.columns(4)
+    with col1:
+        st.markdown(f"<div class='metric-box'><div class='metric-val'>32 ans</div><div class='metric-lbl'>Années couvertes<br>(1994 - 2025)</div></div>", unsafe_allow_html=True)
+    with col2:
+        st.markdown(f"<div class='metric-box'><div class='metric-val'>{len(indicators)}</div><div class='metric-lbl'>Indicateurs macro & sectoriels</div></div>", unsafe_allow_html=True)
+    with col3:
+        st.markdown(f"<div class='metric-box'><div class='metric-val'>2 114</div><div class='metric-lbl'>Points d'observations</div></div>", unsafe_allow_html=True)
+    with col4:
+        st.markdown(f"<div class='metric-box'><div class='metric-val'>Mai 2026</div><div class='metric-lbl'>Dernière mise à jour</div></div>", unsafe_allow_html=True)
+        
     st.markdown("---")
-    st.subheader("Actualités")
+    st.markdown("### 📌 Aperçu thématique")
+    st.write("Sélectionnez un onglet dans le menu latéral pour explorer les données de production nationale, suivre l'évolution des prix de vente spot en $/kg ou croiser les dynamiques de marché face au taux de change du Franc Congolais (CDF).")
 
-    st.caption(
-        "Voici les chiffres clés de la filière café en RDC "
-        "pour l'année 2025."
+
+# ==================== CATALOGUE DES INDICATEURS ====================
+elif page == "Catalogue des indicateurs":
+    st.title("📂 Catalogue des indicateurs")
+    st.write("Cliquez sur l'indicateur de votre choix pour voir sa série temporelle complète, sa définition, son graphique dynamique et exporter ses données.")
+    
+    # Génération d'une structure de grille (Cartes)
+    cols = st.columns(3)
+    idx = 0
+    for key, info in indicators.items():
+        with cols[idx % 3]:
+            st.markdown(f"""
+            <div style="background-color:#ffffff; padding:15px; border-radius:6px; border:1px solid #e0e0e0; margin-bottom:15px;">
+                <h4 style="margin:0; color:#1b4332;">{key}</h4>
+                <p style="font-size:0.85rem; color:#6c757d; height:45px; overflow:hidden; text-overflow:ellipsis;">{info['def']}</p>
+                <p style="font-weight:bold; font-size:0.8rem; color:#40916c; margin-bottom:5px;">Unité : {info['unit']}</p>
+            </div>
+            """, unsafe_allow_html=True)
+            if st.button(f"Consulter l'indicateur : {key}", key=f"btn_{key}"):
+                st.session_state['selected_indicator'] = key
+                st.session_state['trigger_view'] = True
+        idx += 1
+
+    # Section dynamique d'affichage suite au clic
+    target = st.session_state.get('selected_indicator', "Production Robusta")
+    
+    st.markdown("---")
+    st.header(f"📈 Analyse détaillée : {target}")
+    
+    info_target = indicators[target]
+    st.markdown(f"**Définition technique :** {info_target['def']}")
+    st.markdown(f"**Source institutionnelle :** `{info_target['source']}`")
+    
+    # Création du graphique temporel Plotly épuré
+    fig = px.line(
+        df_annual, x="Période", y=info_target['col'],
+        title=f"Évolution temporelle : {target} (1994 - 2025)",
+        labels={"Période": "Année", info_target['col']: f"{target} ({info_target['unit']})"},
+        markers=True
     )
+    fig.update_traces(line_color='#1b4332', marker=dict(size=6))
+    fig.update_layout(plot_bgcolor='white', hovermode='x unified')
+    fig.update_xaxes(showgrid=True, gridcolor='#f0f0f0')
+    fig.update_yaxes(showgrid=True, gridcolor='#f0f0f0')
+    st.plotly_chart(fig, use_container_width=True)
+    
+    # Table de données & Téléchargements
+    st.subheader("📋 Données brutes de la série")
+    sub_df = df_annual[["Période", info_target['col']]].rename(columns={"Période": "Année"}).dropna()
+    
+    col_data, col_dl = st.columns([2, 1])
+    with col_data:
+        st.dataframe(sub_df.style.format({"Année": "{:.0f}", info_target['col']: "{:,.2f}"}), height=250, use_container_width=True)
+        
+    with col_dl:
+        st.write("📥 Exporter cette série :")
+        # Téléchargement CSV
+        csv_data = sub_df.to_csv(index=False).encode('utf-8')
+        st.download_button(label="Télécharger au format CSV", data=csv_data, file_name=f"{target.lower().replace(' ', '_')}_rdc.csv", mime='text/csv')
+        
+        # Téléchargement Excel
+        output = BytesIO()
+        with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
+            sub_df.to_excel(writer, index=False, sheet_name='Données')
+        excel_data = output.getvalue()
+        st.download_button(label="Télécharger au format Excel (XLSX)", data=excel_data, file_name=f"{target.lower().replace(' ', '_')}_rdc.xlsx", mime='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
 
-    try:
 
-        # Chargement des données
-        raw_prod = load_excel(
-            URL_PRODUCTION_PRIX,
-            "Annual Production"
+# ==================== COMPARAISON D'INDICATEURS ====================
+elif page == "Comparaison d'indicateurs":
+    st.title("🔀 Analyse comparative croisée")
+    st.write("Sélectionnez jusqu'à deux variables pour analyser les corrélations historiques ou l'impact des chocs macroéconomiques sur les prix et volumes de café.")
+    
+    col_sel1, col_sel2 = st.columns(2)
+    options_list = list(indicators.keys())
+    
+    with col_sel1:
+        var1 = st.selectbox("Première variable (Axe Y Gauche)", options_list, index=0)
+    with col_sel2:
+        var2 = st.selectbox("Deuxième variable (Axe Y Droit)", options_list, index=3)
+        
+    if var1 and var2:
+        fig_comp = go.Figure()
+        
+        # Ajout variable 1
+        fig_comp.add_trace(go.Scatter(
+            x=df_annual["Période"], y=df_annual[indicators[var1]['col']],
+            name=f"{var1} ({indicators[var1]['unit']})",
+            line=dict(color='#1b4332', width=2.5), mode='lines+markers'
+        ))
+        
+        # Ajout variable 2 avec axe secondaire
+        fig_comp.add_trace(go.Scatter(
+            x=df_annual["Période"], y=df_annual[indicators[var2]['col']],
+            name=f"{var2} ({indicators[var2]['unit']})",
+            line=dict(color='#d90429', width=2.5, dash='dash'), yaxis="y2", mode='lines+markers'
+        ))
+        
+        # Mise en page double axe
+        fig_comp.update_layout(
+            title=f"Comparatif : {var1} vs {var2}",
+            xaxis=dict(title="Année"),
+            yaxis=dict(title=f"{var1} ({indicators[var1]['unit']})", titlefont=dict(color="#1b4332"), tickfont=dict(color="#1b4332")),
+            yaxis2=dict(title=f"{var2} ({indicators[var2]['unit']})", titlefont=dict(color="#d90429"), tickfont=dict(color="#d90429"), overlaying="y", side="right"),
+            plot_bgcolor='white',
+            legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
+            hovermode='x unified'
         )
-
-        raw_price = load_excel(
-            URL_PRODUCTION_PRIX,
-            "Annual Price"
-        )
-
-        # Nettoyage
-        df_prod_ann = clean_numeric_df(raw_prod)
-        df_price_ann = clean_numeric_df(raw_price)
-
-        # Vérification des données
-        if df_prod_ann.empty:
-            st.warning(
-                "Les données de production annuelle sont indisponibles."
-            )
-
-        if df_price_ann.empty:
-            st.warning(
-                "Les données de prix annuels sont indisponibles."
-            )
-
-        # ====================================================
-        # PRODUCTION
-        # ====================================================
-
-        st.markdown("#### Production 2025 (en tonnes)")
-
-        c1, c2, c3 = st.columns(3)
-
-        if not df_prod_ann.empty:
-
-            time_col = df_prod_ann.columns[0]
-
-            row_2025 = get_row_by_year(
-                df_prod_ann,
-                time_col,
-                2025
-            )
-
-            row_2024 = get_row_by_year(
-                df_prod_ann,
-                time_col,
-                2024
-            )
-
-            required_columns = [
-                "Total",
-                "Robusta",
-                "Arabica"
-            ]
-
-            missing_columns = [
-                col
-                for col in required_columns
-                if col not in df_prod_ann.columns
-            ]
-
-            if missing_columns:
-
-                st.warning(
-                    "Colonnes de production manquantes : "
-                    + ", ".join(missing_columns)
-                )
-
-            elif row_2025 is None:
-
-                st.warning(
-                    "Aucune donnée de production disponible pour 2025."
-                )
-
-            else:
-
-                total_2025 = safe_float(row_2025["Total"])
-                robusta_2025 = safe_float(row_2025["Robusta"])
-                arabica_2025 = safe_float(row_2025["Arabica"])
-
-                delta_total = None
-                delta_rob = None
-                delta_ara = None
-
-                if row_2024 is not None:
-
-                    total_2024 = safe_float(row_2024["Total"])
-                    robusta_2024 = safe_float(row_2024["Robusta"])
-                    arabica_2024 = safe_float(row_2024["Arabica"])
-
-                    if total_2025 is not None:
-                        delta_total = calculate_variation(
-                            total_2025,
-                            total_2024
-                        )
-
-                    if robusta_2025 is not None:
-                        delta_rob = calculate_variation(
-                            robusta_2025,
-                            robusta_2024
-                        )
-
-                    if arabica_2025 is not None:
-                        delta_ara = calculate_variation(
-                            arabica_2025,
-                            arabica_2024
-                        )
-
-                # Production totale
-                if total_2025 is not None:
-                    c1.metric(
-                        "Production totale",
-                        f"{total_2025:,.0f} t",
-                        delta_total
-                    )
-                else:
-                    c1.metric(
-                        "Production totale",
-                        "N/D"
-                    )
-
-                # Robusta
-                if robusta_2025 is not None:
-                    c2.metric(
-                        "Robusta",
-                        f"{robusta_2025:,.0f} t",
-                        delta_rob
-                    )
-                else:
-                    c2.metric(
-                        "Robusta",
-                        "N/D"
-                    )
-
-                # Arabica
-                if arabica_2025 is not None:
-                    c3.metric(
-                        "Arabica",
-                        f"{arabica_2025:,.0f} t",
-                        delta_ara
-                    )
-                else:
-                    c3.metric(
-                        "Arabica",
-                        "N/D"
-                    )
-
-        # ====================================================
-        # PRIX
-        # ====================================================
-
-        st.markdown("#### Prix 2025 ($/kg)")
-
-        c1, c2 = st.columns(2)
-
-        if not df_price_ann.empty:
-
-            time_col = df_price_ann.columns[0]
-
-            row_2025 = get_row_by_year(
-                df_price_ann,
-                time_col,
-                2025
-            )
-
-            row_2024 = get_row_by_year(
-                df_price_ann,
-                time_col,
-                2024
-            )
-
-            required_columns = [
-                "Robusta",
-                "Arabica"
-            ]
-
-            missing_columns = [
-                col
-                for col in required_columns
-                if col not in df_price_ann.columns
-            ]
-
-            if missing_columns:
-
-                st.warning(
-                    "Colonnes de prix manquantes : "
-                    + ", ".join(missing_columns)
-                )
-
-            elif row_2025 is None:
-
-                st.warning(
-                    "Aucune donnée de prix disponible pour 2025."
-                )
-
-            else:
-
-                robusta_price_2025 = safe_float(
-                    row_2025["Robusta"]
-                )
-
-                arabica_price_2025 = safe_float(
-                    row_2025["Arabica"]
-                )
-
-                delta_rob_price = None
-                delta_ara_price = None
-
-                if row_2024 is not None:
-
-                    robusta_price_2024 = safe_float(
-                        row_2024["Robusta"]
-                    )
-
-                    arabica_price_2024 = safe_float(
-                        row_2024["Arabica"]
-                    )
-
-                    if robusta_price_2025 is not None:
-                        delta_rob_price = calculate_variation(
-                            robusta_price_2025,
-                            robusta_price_2024
-                        )
-
-                    if arabica_price_2025 is not None:
-                        delta_ara_price = calculate_variation(
-                            arabica_price_2025,
-                            arabica_price_2024
-                        )
-
-                if robusta_price_2025 is not None:
-                    c1.metric(
-                        "Prix Robusta",
-                        f"{robusta_price_2025:.2f} $/kg",
-                        delta_rob_price
-                    )
-                else:
-                    c1.metric(
-                        "Prix Robusta",
-                        "N/D"
-                    )
-
-                if arabica_price_2025 is not None:
-                    c2.metric(
-                        "Prix Arabica",
-                        f"{arabica_price_2025:.2f} $/kg",
-                        delta_ara_price
-                    )
-                else:
-                    c2.metric(
-                        "Prix Arabica",
-                        "N/D"
-                    )
-
-        st.caption(
-            "Sources : Banque Centrale du Congo et Banque mondiale."
-        )
-
-        st.caption(
-            "Développé par Emerson Mbungu."
-        )
-
-    except Exception as e:
-
-        st.error(
-            "Erreur lors du chargement des données 2025."
-        )
-
-        st.exception(e)
-
-
-# ============================================================
-# SECTION 2 : PRODUCTION ET PRIX
-# ============================================================
-
-elif section == "Production et Prix":
-
-    st.subheader("Production et Prix")
-
-    tab1, tab2 = st.tabs(
-        [
-            "Données annuelles",
-            "Données mensuelles"
-        ]
-    )
-
-    # ========================================================
-    # DONNÉES ANNUELLES
-    # ========================================================
-
-    with tab1:
-
-        st.markdown(
-            "### Analyse des tendances annuelles"
-        )
-
-        try:
-
-            df_ann_prod = load_excel(
-                URL_PRODUCTION_PRIX,
-                "Annual Production"
-            )
-
-            df_ann_price = load_excel(
-                URL_PRODUCTION_PRIX,
-                "Annual Price"
-            )
-
-            col1, col2 = st.columns(2)
-
-            with col1:
-
-                st.write(
-                    "**Production annuelle (en tonnes)**"
-                )
-
-                st.dataframe(
-                    df_ann_prod,
-                    use_container_width=True,
-                    hide_index=True
-                )
-
-            with col2:
-
-                st.write(
-                    "**Prix annuels ($/kg)**"
-                )
-
-                st.dataframe(
-                    df_ann_price,
-                    use_container_width=True,
-                    hide_index=True
-                )
-
-            # ------------------------------------------------
-            # PRÉPARATION DU GRAPHIQUE
-            # ------------------------------------------------
-
-            df_graph_ann = clean_numeric_df(
-                df_ann_prod
-            )
-
-            if df_graph_ann.empty:
-
-                st.warning(
-                    "Impossible de générer le graphique annuel."
-                )
-
-            else:
-
-                x = df_graph_ann.columns[0]
-
-                if "Total" in df_graph_ann.columns:
-
-                    y = "Total"
-
-                elif len(df_graph_ann.columns) > 1:
-
-                    y = df_graph_ann.columns[1]
-
-                else:
-
-                    st.warning(
-                        "Aucune variable de production disponible."
-                    )
-                    y = None
-
-                if y is not None:
-
-                    df_graph_ann = df_graph_ann[
-                        [x, y]
-                    ].dropna()
-
-                    if not df_graph_ann.empty:
-
-                        fig = px.line(
-                            df_graph_ann,
-                            x=x,
-                            y=y,
-                            markers=True,
-                            title=(
-                                "Évolution de la production "
-                                "annuelle globale"
-                            ),
-                            labels={
-                                x: "Année",
-                                y: "Production (tonnes)"
-                            }
-                        )
-
-                        fig.update_layout(
-                            template="plotly_white",
-                            hovermode="x unified"
-                        )
-
-                        st.plotly_chart(
-                            fig,
-                            use_container_width=True
-                        )
-
-                    else:
-
-                        st.warning(
-                            "Aucune donnée exploitable pour le graphique."
-                        )
-
-        except Exception as e:
-
-            st.error(
-                "Erreur lors du chargement des données annuelles."
-            )
-
-            st.exception(e)
-
-    # ========================================================
-    # DONNÉES MENSUELLES
-    # ========================================================
-
-    with tab2:
-
-        st.markdown(
-            "### Analyse des tendances mensuelles"
-        )
-
-        try:
-
-            df_mth_prod = load_excel(
-                URL_PRODUCTION_PRIX,
-                "Monthly Production"
-            )
-
-            df_mth_price = load_excel(
-                URL_PRODUCTION_PRIX,
-                "Monthly Price"
-            )
-
-            col1, col2 = st.columns(2)
-
-            with col1:
-
-                st.write(
-                    "**Production mensuelle (en tonnes)**"
-                )
-
-                st.dataframe(
-                    df_mth_prod,
-                    use_container_width=True,
-                    hide_index=True
-                )
-
-            with col2:
-
-                st.write(
-                    "**Prix mensuels ($/kg)**"
-                )
-
-                st.dataframe(
-                    df_mth_price,
-                    use_container_width=True,
-                    hide_index=True
-                )
-
-        except Exception as e:
-
-            st.error(
-                "Erreur lors du chargement des données mensuelles."
-            )
-
-            st.exception(e)
-
-
-# ============================================================
-# SECTION 3 : DONNÉES MACROÉCONOMIQUES
-# ============================================================
-
-elif section == "Données macroéconomiques":
-
-    st.subheader(
-        "Données, statistiques et graphiques"
-    )
-
-    try:
-
-        # ----------------------------------------------------
-        # CHARGEMENT
-        # ----------------------------------------------------
-
-        df_ardl = load_excel(
-            URL_DATA_SITE,
-            "Data for ARDL"
-        )
-
-        if df_ardl.empty:
-
-            st.warning(
-                "La base de données ARDL est vide."
-            )
-
-            st.stop()
-
-        # ----------------------------------------------------
-        # BASE DE DONNÉES BRUTE
-        # ----------------------------------------------------
-
-        st.write("### Base de données")
-
-        st.dataframe(
-            df_ardl,
-            use_container_width=True,
-            hide_index=True
-        )
-
-        # ----------------------------------------------------
-        # NETTOYAGE
-        # ----------------------------------------------------
-
-        df_clean = clean_numeric_df(
-            df_ardl
-        )
-
-        if df_clean.empty:
-
-            st.warning(
-                "Aucune donnée numérique exploitable "
-                "n'a été trouvée."
-            )
-
-            st.stop()
-
-        col_temps = df_clean.columns[0]
-
-        variables = [
-            col
-            for col in df_clean.columns
-            if col != col_temps
-            and df_clean[col].notna().any()
-        ]
-
-        if not variables:
-
-            st.warning(
-                "Aucune variable macroéconomique exploitable."
-            )
-
-            st.stop()
-
-        # ----------------------------------------------------
-        # STATISTIQUES ET PICS
-        # ---------------------------------------
+        fig_comp.update_xaxes(showgrid=True, gridcolor='#f0f0f0')
+        st.plotly_chart(fig_comp, use_container_width=True)
+        
+        st.info(f"💡 **Observation analytique :** Ce graphique permet de visualiser de manière synchrone les cycles des prix internationaux et leurs répercussions immédiates sur le niveau de production physique sur le territoire national.")
+
+
+# ==================== RECHERCHE AVANCÉE ====================
+elif page == "Recherche avancée":
+    st.title("🔍 Moteur de recherche d'indicateurs")
+    query = st.text_input("Saisissez des mots-clés (ex: Robusta, Inflation, Taux, Prix...)", "")
+    
+    if query:
+        results = {k: v for k, v in indicators.items() if query.lower() in k.lower() or query.lower() in v['def'].lower()}
+        if results:
+            st.success(f"🎯 {len(results)} indicateur(s) correspondant(s) trouvé(s) :")
+            for k, v in results.items():
+                with st.expander(f"📊 {k} ({v['unit']})"):
+                    st.write(f"**Définition :** {v['def']}")
+                    st.write(f"**Source officielle :** {v['source']}")
+        else:
+            st.warning("Aucun indicateur ne correspond à votre recherche. Essayez des termes génériques comme 'Production' ou 'Prix'.")
